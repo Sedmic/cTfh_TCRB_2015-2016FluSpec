@@ -1,0 +1,153 @@
+TCRdataMultYears <- read.csv("../Samples_MultipleYearsData_AsOf02242016.csv")
+TCRdataMultYearsIn <- subset(TCRdataMultYears, SequenceStatus=="In", select=c(Subject, Year, Cell, Day, CDR3.AminoAcid, Frequency, Count))
+library(ggplot2)
+library(scales)
+
+#plot of overlap between all Y2 and Y3 time points with respect to Y1D7 for ICOS+CD38+ and ICOS-CD38-
+aa.overlaphivslo <- function(x, y, a, b) {
+  xduplicatedAAtf <- duplicated(x$CDR3.AminoAcid)     #condense rows in x with same amino acid sequence but different nucleotide sequences
+  xrowduplicated <- which(xduplicatedAAtf, xduplicatedAAtf=="TRUE")
+  xduplicatedAA <- x[xrowduplicated, "CDR3.AminoAcid"]
+  xdupall <- x[is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+  xaggdata <- aggregate(Frequency~CDR3.AminoAcid, data=xdupall, FUN=sum)    #add up frequencies for rows with same aa sequence
+  xaggdataorder <- xaggdata[order(xaggdata$Frequency), ]
+  xnotdup <- x[!is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+  xmerge <- rbind(xnotdup, xaggdata)
+  xmergeorder <- xmerge[order(xmerge$Frequency), ]    #list of unique aa sequences in x with frequencies
+  
+  yduplicatedAAtf <- duplicated(y$CDR3.AminoAcid)   #condense rows in y with same aa sequence
+  yrowduplicated <- which(yduplicatedAAtf, yduplicatedAAtf=="TRUE")
+  yduplicatedAA <- y[yrowduplicated, "CDR3.AminoAcid"]
+  ydupall <- y[is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+  yaggdata <- aggregate(Frequency~CDR3.AminoAcid, data=ydupall, FUN=sum)    #add up frequencies for rows with same aa sequence
+  yaggdataorder <- yaggdata[order(yaggdata$Frequency), ]
+  ynotdup <- y[!is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+  ymerge <- rbind(ynotdup, yaggdata)
+  ymergeorder <- ymerge[order(ymerge$Frequency), ]    #list of unique aa sequences in y with frequencies
+  
+  xyAA <- rbind(xmergeorder, ymergeorder)   #find overlapping sequences between x and y with frequencies for each
+  xyduplicatedAAtf <- duplicated(xyAA$CDR3.AminoAcid)
+  xyrowduplicated <- which(xyduplicatedAAtf, xyduplicatedAAtf=="TRUE")
+  xyduplicatedAA <- xyAA[xyrowduplicated, "CDR3.AminoAcid"]
+  yshared <- ymergeorder[is.element(ymergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+  ysharedorder <- yshared[order(yshared$CDR3.AminoAcid), ]
+  colnames(ysharedorder)[2] <- "Frequency.y"
+  xshared <- xmergeorder[is.element(xmergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+  xsharedorder <- xshared[order(xshared$CDR3.AminoAcid), ]
+  colnames(xsharedorder)[2] <- "Frequency.x"
+  xyshared <- merge(xshared, yshared, by=c("CDR3.AminoAcid"))
+  
+  ynotshared <- ymergeorder[!is.element(ymergeorder$CDR3.AminoAcid, xyduplicatedAA), ]    #find nonoverlapping sequences in y
+  ynotsharedorder <- ynotshared[order(ynotshared$CDR3.AminoAcid), ]
+  colnames(ynotsharedorder)[2] <- "Frequency.y"
+  ynotsharedorder$Frequency.x <- 0
+  ynotsharedorder <- ynotsharedorder[c(1,3,2)]
+  xnotshared <- xmergeorder[!is.element(xmergeorder$CDR3.AminoAcid, xyduplicatedAA), ]    #find nonoverlapping sequences in x
+  xnotsharedorder <- xnotshared[order(xnotshared$CDR3.AminoAcid), ]
+  colnames(xnotsharedorder)[2] <- "Frequency.x"
+  xnotsharedorder$Frequency.y <- 0
+  xynotshared <- rbind(xnotsharedorder, ynotsharedorder)
+  
+  xyallhi <- rbind(xyshared, xynotshared)
+  xyallhi$Cell <- "ICOS+CD38+ cTfh"
+  sharedhi <- nrow(xyshared)
+  totalhi <- nrow(xyallhi)
+  
+  
+  aduplicatedAAtf <- duplicated(a$CDR3.AminoAcid)   #condense rows in a with same aa sequence
+  arowduplicated <- which(aduplicatedAAtf, aduplicatedAAtf=="TRUE")
+  aduplicatedAA <- a[arowduplicated, "CDR3.AminoAcid"]
+  adupall <- a[is.element(a$CDR3.AminoAcid, aduplicatedAA), ]
+  aaggdata <- aggregate(Frequency~CDR3.AminoAcid, data=adupall, FUN=sum)    #add up frequencies for rows with same aa sequence
+  aaggdataorder <- aaggdata[order(aaggdata$Frequency), ]
+  anotdup <- a[!is.element(a$CDR3.AminoAcid, aduplicatedAA), ]
+  amerge <- rbind(anotdup, aaggdata)
+  amergeorder <- amerge[order(amerge$Frequency), ]    #list of unique aa sequences in a with frequencies
+  
+  bduplicatedAAtf <- duplicated(b$CDR3.AminoAcid)   #condense rows in b with same aa sequence
+  browduplicated <- which(bduplicatedAAtf, bduplicatedAAtf=="TRUE")
+  bduplicatedAA <- b[browduplicated, "CDR3.AminoAcid"]
+  bdupall <- b[is.element(b$CDR3.AminoAcid, bduplicatedAA), ]
+  baggdata <- aggregate(Frequency~CDR3.AminoAcid, data=bdupall, FUN=sum)    #add up frequencies for rows with same aa sequence
+  baggdataorder <- baggdata[order(baggdata$Frequency), ]
+  bnotdup <- b[!is.element(b$CDR3.AminoAcid, bduplicatedAA), ]
+  bmerge <- rbind(bnotdup, baggdata)
+  bmergeorder <- bmerge[order(bmerge$Frequency), ]    #list of unique aa sequences in b with frequencies
+  
+  abAA <- rbind(amergeorder, bmergeorder)   #find overlapping sequences between a and b with frequencies for each
+  abduplicatedAAtf <- duplicated(abAA$CDR3.AminoAcid)
+  abrowduplicated <- which(abduplicatedAAtf, abduplicatedAAtf=="TRUE")
+  abduplicatedAA <- abAA[abrowduplicated, "CDR3.AminoAcid"]
+  bshared <- bmergeorder[is.element(bmergeorder$CDR3.AminoAcid, abduplicatedAA), ]
+  bsharedorder <- bshared[order(bshared$CDR3.AminoAcid), ]
+  colnames(bsharedorder)[2] <- "Frequency.b"
+  ashared <- amergeorder[is.element(amergeorder$CDR3.AminoAcid, abduplicatedAA), ]
+  asharedorder <- ashared[order(ashared$CDR3.AminoAcid), ]
+  colnames(asharedorder)[2] <- "Frequency.a"
+  abshared <- merge(ashared, bshared, by=c("CDR3.AminoAcid"))
+  colnames(abshared)[2] <- "Frequency.a"
+  colnames(abshared)[3] <- "Frequency.b"
+  
+  bnotshared <- bmergeorder[!is.element(bmergeorder$CDR3.AminoAcid, abduplicatedAA), ]    #find nonoverlapping sequences in b
+  bnotsharedorder <- bnotshared[order(bnotshared$CDR3.AminoAcid), ]
+  colnames(bnotsharedorder)[2] <- "Frequency.b"
+  bnotsharedorder$Frequency.a <- 0
+  bnotsharedorder <- bnotsharedorder[c(1,3,2)]
+  anotshared <- amergeorder[!is.element(amergeorder$CDR3.AminoAcid, abduplicatedAA), ]    #find nonoverlapping sequences in a
+  anotsharedorder <- anotshared[order(anotshared$CDR3.AminoAcid), ]
+  colnames(anotsharedorder)[2] <- "Frequency.a"
+  anotsharedorder$Frequency.b <- 0
+  abnotshared <- rbind(anotsharedorder, bnotsharedorder)
+  
+  aballlo <- rbind(abshared, abnotshared)
+  aballlo$Cell <- "ICOS-CD38- cTfh"
+  sharedlo <- nrow(abshared)
+  totallo <- nrow(aballlo)
+  
+  
+  p.overlaphivslo <- ggplot() +
+    geom_point(data=aballlo, aes(Frequency.a, Frequency.b, fill="#C0D8C0"), size=5, pch=21, color="black", alpha=0.6) +
+    geom_point(data=xyallhi, aes(Frequency.x, Frequency.y, fill="darkorange2"), size=5, pch=21, color="black", alpha=0.6) +
+    scale_x_log10(limits=c(0.0001, 10), breaks=c(0.0001, 0.001, 0.010, 0.100, 1.00, 10.00), labels=comma) +
+    scale_y_log10(limits=c(0.0001, 10), breaks=c(0.0001, 0.001, 0.010, 0.100, 1.00, 10.00), labels=comma) +
+    theme_bw() +
+    scale_fill_manual(values=c("#C0D8C0", "darkorange2")) +
+    theme(legend.position="none" )+#, axis.title=element_text(size=10, face="bold"), axis.text=element_text(size=30, face="bold", margin=unit(0.5, "cm")), plot.title=element_text(size=50, face="bold"), axis.ticks.length=unit(0.5, "cm")) +
+    ggtitle("Year 2 Day 0") +
+    labs(x="Clonotypic frequency of Year2 Day0 (%)", y="Clonotypic frequency of Year1 Day7 (%)")
+  
+  return(p.overlaphivslo)
+}
+
+a1hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1314 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+a1lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1314 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+a2hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+a2lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Day==0 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+a3hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+a3lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+a4hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+a4lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Day==0 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+a5hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+a5lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+
+b1hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1314 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b1lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1314 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+b2hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b2lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==0 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+b3hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b3lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+b4hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b4lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==0 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+b5hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b5lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+
+
+#for individuals with three years data, this function was used for each subsequent time point compared to Y1D7 (4 graphs total)
+
+aa.overlaphivslo(a2hi, a1hi, a2lo, a1lo)
+ggsave(filename = "../R Images/R101Y2D0vY1D7.png",height=4,width=4.5,units="in")
+
+aa.overlaphivslo(b2hi, b1hi, b2lo, b1lo)
+
+
+

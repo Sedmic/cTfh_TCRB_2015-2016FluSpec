@@ -1,0 +1,161 @@
+TCRdataMultYears <- read.csv("../Samples_MultipleYearsData_AsOf02242016.csv")
+TCRdataMultYearsIn <- subset(TCRdataMultYears, SequenceStatus=="In", select=c(Subject, Year, Cell, Day, CDR3.AminoAcid, Frequency, Count))
+library(ggplot2)
+
+#calculating overlap score, jaccard index, and correlation (between any two time points for a given individual)
+aa.overlap <- function(x,y) {
+  xduplicatedAAtf <- duplicated(x$CDR3.AminoAcid)   #condense rows in x with same amino acid sequence but different nucleotide sequences
+  xrowduplicated <- which(xduplicatedAAtf, xduplicatedAAtf=="TRUE")
+  xduplicatedAA <- x[xrowduplicated, "CDR3.AminoAcid"]
+  xdupall <- x[is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+  xaggdata1 <- aggregate(Frequency~CDR3.AminoAcid, data=xdupall, FUN=sum)   #add up frequencies for rows with same aa sequence
+  xaggdata2 <- aggregate(Count~CDR3.AminoAcid, data=xdupall, FUN=sum)   #add up counts for rows with same aa sequence
+  xaggdatamerge <- merge(xaggdata1, xaggdata2, by=c("CDR3.AminoAcid"))
+  xaggdataorder <- xaggdatamerge[order(xaggdatamerge$Frequency), ]
+  xnotdup <- x[!is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+  xmerge <- rbind(xnotdup, xaggdatamerge)
+  xmergeorder <- xmerge[order(xmerge$Frequency), ]    #list of unique aa sequences in x with frequencies and counts
+  
+  yduplicatedAAtf <- duplicated(y$CDR3.AminoAcid)   #condense rows in y with same aa sequence but different nucleotide sequences
+  yrowduplicated <- which(yduplicatedAAtf, yduplicatedAAtf=="TRUE")
+  yduplicatedAA <- y[yrowduplicated, "CDR3.AminoAcid"]
+  ydupall <- y[is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+  yaggdata1 <- aggregate(Frequency~CDR3.AminoAcid, data=ydupall, FUN=sum)   #add up frequencies for rows with same aa sequence
+  yaggdata2 <- aggregate(Count~CDR3.AminoAcid, data=ydupall, FUN=sum)   #add up counts for rows with same aa sequence
+  yaggdatamerge <- merge(yaggdata1, yaggdata2, by=c("CDR3.AminoAcid"))
+  yaggdataorder <- yaggdatamerge[order(yaggdatamerge$Frequency), ]
+  ynotdup <- y[!is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+  ymerge <- rbind(ynotdup, yaggdatamerge)
+  ymergeorder <- ymerge[order(ymerge$Frequency), ]    #list of unique aa sequences in y with frequencies and counts
+  
+  xyAA <- rbind(xmergeorder, ymergeorder)   #find overlapping sequences between x and y with frequencies and counts for each
+  xyduplicatedAAtf <- duplicated(xyAA$CDR3.AminoAcid)
+  xyrowduplicated <- which(xyduplicatedAAtf, xyduplicatedAAtf=="TRUE")
+  xyduplicatedAA <- xyAA[xyrowduplicated, "CDR3.AminoAcid"]
+  yshared <- ymergeorder[is.element(ymergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+  ysharedorder <- yshared[order(yshared$CDR3.AminoAcid), ]
+  colnames(ysharedorder)[2] <- "Frequency.y"
+  colnames(ysharedorder)[3] <- "Count.y"
+  xshared <- xmergeorder[is.element(xmergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+  xsharedorder <- xshared[order(xshared$CDR3.AminoAcid), ]
+  colnames(xsharedorder)[2] <- "Frequency.x"
+  colnames(xsharedorder)[3] <- "Count.x"
+  xyshared <- merge(xshared, yshared, by=c("CDR3.AminoAcid"))
+  xyshared$Group <- "Shared"
+  
+  ynotshared <- ymergeorder[!is.element(ymergeorder$CDR3.AminoAcid, xyduplicatedAA), ]    #find nonoverlapping sequences in y
+  ynotsharedorder <- ynotshared[order(ynotshared$CDR3.AminoAcid), ]
+  colnames(ynotsharedorder)[2] <- "Frequency.y"
+  colnames(ynotsharedorder)[3] <- "Count.y"
+  ynotsharedorder$Frequency.x <- 0
+  ynotsharedorder$Count.x <- 0
+  ynotsharedorder <- ynotsharedorder[c(1,4,5,2,3)]
+  ynotsharedorder$Group <- "Nonshared in Y"
+  xnotshared <- xmergeorder[!is.element(xmergeorder$CDR3.AminoAcid, xyduplicatedAA), ]    #find nonoverlapping sequences in x
+  xnotsharedorder <- xnotshared[order(xnotshared$CDR3.AminoAcid), ]
+  colnames(xnotsharedorder)[2] <- "Frequency.x"
+  colnames(xnotsharedorder)[3] <- "Count.x"
+  xnotsharedorder$Frequency.y <- 0
+  xnotsharedorder$Count.y <- 0
+  xnotsharedorder$Group <- "Nonshared in X"
+  xynotshared <- rbind(xnotsharedorder, ynotsharedorder)
+  
+  xyall <- rbind(xyshared, xynotshared)
+  
+  cor1 <- cor(xyshared$Frequency.x, xyshared$Frequency.y, method="pearson")
+  cor2 <- (cor1)^2                  #r^2 calculation
+  cor2 <- signif(cor2, digits=5)
+  shared <- nrow(xyshared)        #number of unique overlapping (shared) sequences
+  notsharedx <- nrow(xnotshared)    #number of unique nonoverlapping (nonshared) sequences in x
+  notsharedy <- nrow(ynotshared)    #number of unique nonoverlapping (nonshared) sequences in y
+  overlap1 <- sum(xyshared$Count.x)
+  overlap2 <- sum(xyshared$Count.y)
+  overlap3 <- sum(xyall$Count.x)
+  overlap4 <- sum(xyall$Count.y)
+  overlap5 <- ((overlap1 + overlap2)/(overlap3 + overlap4))   #overlap score calculation
+  overlap5 <- signif(overlap5, digits=5)
+  jaccard <- ((nrow(xyshared))/(nrow(xyall)))   #jaccard index calculation
+  jaccard <- signif(jaccard, digits=5)
+  
+  ols <- lm(Frequency.y~Frequency.x, data=xyshared)   #line of best fit calculation
+  
+  p.overlap <- ggplot(data=xyall, aes(Frequency.x, Frequency.y, color=Group)) +
+    geom_point(size=3) +
+    geom_text(aes(0.5, 0.5, label=paste("r^2=", cor2))) +
+    geom_text(aes(0.5, 0.45, label=paste("o=", overlap5))) +
+    geom_text(aes(0.5, 0.4, label=paste("jaccard index=", jaccard))) +
+    geom_text(aes(0.5, 0.35, label=paste("Shared Clonotypes=", shared))) +
+    geom_text(aes(0.5, 0.3, label=paste("Nonshared Clonotypes in x=", notsharedx))) +
+    geom_text(aes(0.5, 0.25, label=paste("Nonshared Clonotypes in y=", notsharedy))) +
+    geom_abline(intercept= ols$coefficients[1], slope= ols$coefficients[2], color="red") +
+    theme_bw() +
+    ggtitle("Clonotypic distribution") +
+    labs(x="Clonotypic frequency of X (%)", y="Clonotypic frequency of Y (%)")
+  
+  return(list(overlap5, cor2, jaccard, shared, notsharedx, notsharedy, p.overlap))
+}
+
+aa.overlap(b3hi, b5hi)
+
+#values were recorded in an Excel csv file until values for all time points were calculated and recorded, then plotted separately
+
+a1hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1314 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+a2hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+a3hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+a1lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1314 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+a2lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Cell=="ICOS-CD38-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+a3lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+a4hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+a5hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+a4lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Cell=="ICOS-CD38-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+a5lo <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+a4x <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Cell=="CXCR5-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+a5x <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+
+b1hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1314 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+b2hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+b3hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+b1lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1314 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+b2lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Cell=="ICOS-CD38-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+b3lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+b1x <- subset(TCRdataMultYearsIn, Subject==999 & Year==1314 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+b2x <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Cell=="CXCR5-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+b3x <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+b4hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+b5hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+b4lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Cell=="ICOS-CD38-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+b5lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+b4x <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Cell=="CXCR5-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+b5x <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+b6x <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Cell=="CXCR5-" & Day=="6wk", select=c(CDR3.AminoAcid, Frequency, Count))
+
+c3hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+c3lo <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+c3x <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+c4hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+c5hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+c4lo <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Cell=="ICOS-CD38-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+c5lo <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+c4x <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Cell=="CXCR5-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+c5x <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+c6x <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Cell=="CXCR5-" & Day=="6wk", select=c(CDR3.AminoAcid, Frequency, Count))
+
+d3hi <- subset(TCRdataMultYearsIn, Subject==106 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+d3lo <- subset(TCRdataMultYearsIn, Subject==106 & Year==1415 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+d3x <- subset(TCRdataMultYearsIn, Subject==106 & Year==1415 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+d4hi <- subset(TCRdataMultYearsIn, Subject==106 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+d5hi <- subset(TCRdataMultYearsIn, Subject==106 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+d4lo <- subset(TCRdataMultYearsIn, Subject==106 & Year==1516 & Cell=="ICOS-CD38-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+d5lo <- subset(TCRdataMultYearsIn, Subject==106 & Year==1516 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+d4x <- subset(TCRdataMultYearsIn, Subject==106 & Year==1516 & Cell=="CXCR5-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+d5x <- subset(TCRdataMultYearsIn, Subject==106 & Year==1516 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+
+e3hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+e3lo <- subset(TCRdataMultYearsIn, Subject==117 & Year==1415 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+e3x <- subset(TCRdataMultYearsIn, Subject==117 & Year==1415 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+e4hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+e5hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+e4lo <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Cell=="ICOS-CD38-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+e5lo <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Cell=="ICOS-CD38-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))
+e4x <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Cell=="CXCR5-" & Day==0, select=c(CDR3.AminoAcid, Frequency, Count))
+e5x <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Cell=="CXCR5-" & Day==7, select=c(CDR3.AminoAcid, Frequency, Count))

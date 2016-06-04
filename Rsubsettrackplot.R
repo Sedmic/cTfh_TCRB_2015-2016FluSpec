@@ -1,0 +1,26 @@
+TCRHitoLo <- read.csv("Y1D7HiandY2D0HitoSubsetsY2HivLoCumulativeFreq.csv")
+TCRHitoLo$Subject <- as.factor(TCRHitoLo$Subject)
+ggplot(data=TCRHitoLo, aes(x=Day_Arbitrary, y=Frequency, group=interaction(Subject,Cell), color=Cell, shape=Subject, fill=Cell)) +
+  geom_line(size=1) +
+  geom_point(size=5) +
+  scale_x_continuous(labels=c("Day 0", "Day 7", "Day 0", "Day 7")) +
+  scale_y_log10(limits=c(0.001, 100), breaks=c(0.001, 0.01, 0.1, 1, 10, 100), labels=comma) +
+  scale_color_manual(values=c("#339900", "darkorange")) +
+  scale_shape_manual(values=c(21, 7, 22, 5, 24)) +
+  scale_fill_manual(values=c("#339900", "darkorange")) +
+  theme_bw() +
+  theme(legend.title=element_text(size=17), legend.text=element_text(size=17), legend.key=element_blank(),axis.title.y=element_text(size=20, face="bold"), axis.title.x=element_blank(), axis.text=element_text(size=18, face="bold", margin=unit(0.5, "cm")), plot.title=element_text(size=20, face="bold")) +
+  ggtitle("Y1D7 ICOS+CD38+ to Y2D0 ICOS+CD38+ Clones in Year 2") +
+  labs(x="Day", y="Cumulative Frequency (%)")
+ggplot(data=TCRHitoLo, aes(x=Day_Arbitrary, y=F.G, group=interaction(Subject,Cell), color=Cell, shape=Subject, fill=Cell)) +
+  geom_line(size=1) +
+  geom_point(size=5) +
+  scale_x_continuous(labels=c("Day 0", "Day 7", "Day 0", "Day 7")) +
+  scale_y_log10(limits=c(0.001, 1), breaks=c(0.001, 0.01, 0.1, 1), labels=comma) +
+  scale_color_manual(values=c("#339900", "darkorange")) +
+  scale_shape_manual(values=c(21, 7, 22, 5, 24)) +
+  scale_fill_manual(values=c("#339900", "darkorange")) +
+  theme_bw() +
+  theme(legend.title=element_text(size=17), legend.text=element_text(size=17), legend.key=element_blank(),axis.title.y=element_text(size=20, face="bold"), axis.title.x=element_blank(), axis.text=element_text(size=18, face="bold", margin=unit(0.5, "cm")), plot.title=element_text(size=20, face="bold")) +
+  ggtitle("Y1D7 ICOS+CD38+ to Y2D0 ICOS+CD38+ Clones in Year 2") +
+  labs(x="Day", y="Frequency of Unique Sequences (%)")
