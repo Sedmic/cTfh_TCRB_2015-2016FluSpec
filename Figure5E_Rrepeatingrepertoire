@@ -1,0 +1,158 @@
+TCRdataMultYears <- read.csv("Samples_MultipleYearsData_AsOf09162016.csv")
+TCRdataMultYearsIn <- subset(TCRdataMultYears, SequenceStatus=="In", select=c(Subject, Year, Cell, Day, CDR3.AminoAcid, Frequency, Count))
+
+
+b1hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1314 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+b3hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+b5hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+
+a1hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1314 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+a3hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+a5hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+
+d3hi <- subset(TCRdataMultYearsIn, Subject==106 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+d5hi <- subset(TCRdataMultYearsIn, Subject==106 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+
+c3hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+c4hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+c5hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+
+e3hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+e4hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+e5hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+
+l3hi <- subset(TCRdataMultYearsIn, Subject==100 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+l4hi <- subset(TCRdataMultYearsIn, Subject==100 & Year==1516 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+l5hi <- subset(TCRdataMultYearsIn, Subject==100 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency, Count))
+
+
+
+x <- a5hi
+y <- a3hi
+z <- a1hi
+
+#3 Years
+xduplicatedAAtf <- duplicated(x$CDR3.AminoAcid)   #condense rows in x with same amino acid sequence but different nucleotide sequences
+xrowduplicated <- which(xduplicatedAAtf, xduplicatedAAtf=="TRUE")
+xduplicatedAA <- x[xrowduplicated, "CDR3.AminoAcid"]
+xdupall <- x[is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+xaggdata1 <- aggregate(Frequency~CDR3.AminoAcid, data=xdupall, FUN=sum)   #add up frequencies for rows with same aa sequence
+xaggdata2 <- aggregate(Count~CDR3.AminoAcid, data=xdupall, FUN=sum)   #add up counts for rows with same aa sequence
+xaggdatamerge <- merge(xaggdata1, xaggdata2, by=c("CDR3.AminoAcid"))
+xaggdataorder <- xaggdatamerge[order(xaggdatamerge$Frequency), ]
+xnotdup <- x[!is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+xmerge <- rbind(xnotdup, xaggdatamerge)
+xmergeorder <- xmerge[order(xmerge$Frequency), ]    #list of unique aa sequences in x with frequencies and counts
+
+yduplicatedAAtf <- duplicated(y$CDR3.AminoAcid)   #condense rows in y with same aa sequence but different nucleotide sequences
+yrowduplicated <- which(yduplicatedAAtf, yduplicatedAAtf=="TRUE")
+yduplicatedAA <- y[yrowduplicated, "CDR3.AminoAcid"]
+ydupall <- y[is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+yaggdata1 <- aggregate(Frequency~CDR3.AminoAcid, data=ydupall, FUN=sum)   #add up frequencies for rows with same aa sequence
+yaggdata2 <- aggregate(Count~CDR3.AminoAcid, data=ydupall, FUN=sum)   #add up counts for rows with same aa sequence
+yaggdatamerge <- merge(yaggdata1, yaggdata2, by=c("CDR3.AminoAcid"))
+yaggdataorder <- yaggdatamerge[order(yaggdatamerge$Frequency), ]
+ynotdup <- y[!is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+ymerge <- rbind(ynotdup, yaggdatamerge)
+ymergeorder <- ymerge[order(ymerge$Frequency), ]    #list of unique aa sequences in y with frequencies and counts
+
+zduplicatedAAtf <- duplicated(z$CDR3.AminoAcid)   #condense rows in y with same aa sequence but different nucleotide sequences
+zrowduplicated <- which(zduplicatedAAtf, zduplicatedAAtf=="TRUE")
+zduplicatedAA <- z[zrowduplicated, "CDR3.AminoAcid"]
+zdupall <- z[is.element(z$CDR3.AminoAcid, zduplicatedAA), ]
+zaggdata1 <- aggregate(Frequency~CDR3.AminoAcid, data=zdupall, FUN=sum)   #add up frequencies for rows with same aa sequence
+zaggdata2 <- aggregate(Count~CDR3.AminoAcid, data=zdupall, FUN=sum)   #add up counts for rows with same aa sequence
+zaggdatamerge <- merge(zaggdata1, zaggdata2, by=c("CDR3.AminoAcid"))
+zaggdataorder <- zaggdatamerge[order(zaggdatamerge$Frequency), ]
+znotdup <- z[!is.element(z$CDR3.AminoAcid, zduplicatedAA), ]
+zmerge <- rbind(znotdup, zaggdatamerge)
+zmergeorder <- zmerge[order(zmerge$Frequency), ]    #list of unique aa sequences in y with frequencies and counts
+
+xyAA <- rbind(xmergeorder, ymergeorder)   #find overlapping sequences between x and y with frequencies and counts for each
+xyduplicatedAAtf <- duplicated(xyAA$CDR3.AminoAcid)
+xyrowduplicated <- which(xyduplicatedAAtf, xyduplicatedAAtf=="TRUE")
+xyduplicatedAA <- xyAA[xyrowduplicated, "CDR3.AminoAcid"]
+yshared <- ymergeorder[is.element(ymergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+ysharedorder <- yshared[order(yshared$CDR3.AminoAcid), ]
+colnames(ysharedorder)[2] <- "Frequency.y"
+colnames(ysharedorder)[3] <- "Count.y"
+xshared <- xmergeorder[is.element(xmergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+xsharedorder <- xshared[order(xshared$CDR3.AminoAcid), ]
+colnames(xsharedorder)[2] <- "Frequency.x"
+colnames(xsharedorder)[3] <- "Count.x"
+xyshared <- merge(xshared, yshared, by=c("CDR3.AminoAcid"))
+
+xysharedAA <- xyshared[[1]]   #find overlapping sequences between x, y, and z with frequencies for each
+zshared <- zmergeorder[is.element(zmergeorder$CDR3.AminoAcid, xysharedAA), ]
+colnames(zshared)[2] <- "Frequency.z"
+colnames(zshared)[3] <- "Count.z"
+zsharedAA <- zshared[[1]]
+xyzshared <- xyshared[is.element(xyshared$CDR3.AminoAcid, zsharedAA), ]
+xyzshared <- merge(xyzshared, zshared, by=c("CDR3.AminoAcid"))
+xyzshared$CountSum <- xyzshared$Count.x + xyzshared$Count.y + xyzshared$Count.z
+colnames(xyzshared)[2] <- "FreqY3D7"
+colnames(xyzshared)[3] <- "CountY3D7"
+colnames(xyzshared)[4] <- "FreqY2D7"
+colnames(xyzshared)[5] <- "CountY2D7"
+colnames(xyzshared)[6] <- "FreqY1D7"
+colnames(xyzshared)[7] <- "CountY1D7"
+xyzshared$Subject <- 101
+xyzshared <- xyzshared[c(9,1,8,2,3,4,5,6,7)]
+xyzsharedorder <- xyzshared[order(xyzshared$CountSum), ]
+
+#
+#write.csv(xyzsharedorder, "101repeating.csv")
+
+
+x <- l5hi
+y <- l3hi
+
+#2 years
+xduplicatedAAtf <- duplicated(x$CDR3.AminoAcid)   #condense rows in x with same amino acid sequence but different nucleotide sequences
+xrowduplicated <- which(xduplicatedAAtf, xduplicatedAAtf=="TRUE")
+xduplicatedAA <- x[xrowduplicated, "CDR3.AminoAcid"]
+xdupall <- x[is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+xaggdata1 <- aggregate(Frequency~CDR3.AminoAcid, data=xdupall, FUN=sum)   #add up frequencies for rows with same aa sequence
+xaggdata2 <- aggregate(Count~CDR3.AminoAcid, data=xdupall, FUN=sum)   #add up counts for rows with same aa sequence
+xaggdatamerge <- merge(xaggdata1, xaggdata2, by=c("CDR3.AminoAcid"))
+xaggdataorder <- xaggdatamerge[order(xaggdatamerge$Frequency), ]
+xnotdup <- x[!is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+xmerge <- rbind(xnotdup, xaggdatamerge)
+xmergeorder <- xmerge[order(xmerge$Frequency), ]    #list of unique aa sequences in x with frequencies and counts
+
+yduplicatedAAtf <- duplicated(y$CDR3.AminoAcid)   #condense rows in y with same aa sequence but different nucleotide sequences
+yrowduplicated <- which(yduplicatedAAtf, yduplicatedAAtf=="TRUE")
+yduplicatedAA <- y[yrowduplicated, "CDR3.AminoAcid"]
+ydupall <- y[is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+yaggdata1 <- aggregate(Frequency~CDR3.AminoAcid, data=ydupall, FUN=sum)   #add up frequencies for rows with same aa sequence
+yaggdata2 <- aggregate(Count~CDR3.AminoAcid, data=ydupall, FUN=sum)   #add up counts for rows with same aa sequence
+yaggdatamerge <- merge(yaggdata1, yaggdata2, by=c("CDR3.AminoAcid"))
+yaggdataorder <- yaggdatamerge[order(yaggdatamerge$Frequency), ]
+ynotdup <- y[!is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+ymerge <- rbind(ynotdup, yaggdatamerge)
+ymergeorder <- ymerge[order(ymerge$Frequency), ]    #list of unique aa sequences in y with frequencies and counts
+
+xyAA <- rbind(xmergeorder, ymergeorder)   #find overlapping sequences between x and y with frequencies and counts for each
+xyduplicatedAAtf <- duplicated(xyAA$CDR3.AminoAcid)
+xyrowduplicated <- which(xyduplicatedAAtf, xyduplicatedAAtf=="TRUE")
+xyduplicatedAA <- xyAA[xyrowduplicated, "CDR3.AminoAcid"]
+yshared <- ymergeorder[is.element(ymergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+ysharedorder <- yshared[order(yshared$CDR3.AminoAcid), ]
+colnames(ysharedorder)[2] <- "Frequency.y"
+colnames(ysharedorder)[3] <- "Count.y"
+xshared <- xmergeorder[is.element(xmergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+xsharedorder <- xshared[order(xshared$CDR3.AminoAcid), ]
+colnames(xsharedorder)[2] <- "Frequency.x"
+colnames(xsharedorder)[3] <- "Count.x"
+xyshared <- merge(xshared, yshared, by=c("CDR3.AminoAcid"))
+xyshared$CountSum <- xyshared$Count.x + xyshared$Count.y
+colnames(xyshared)[2] <- "FreqY3D7"
+colnames(xyshared)[3] <- "CountY3D7"
+colnames(xyshared)[4] <- "FreqY2D7"
+colnames(xyshared)[5] <- "CountY2D7"
+xyshared$Subject <- 100
+xyshared <- xyshared[c(7,1,6,2,3,4,5)]
+xysharedorder <- xyshared[order(xyshared$CountSum), ]
+
+write.csv(xysharedorder, "100repeating.csv")
+
