@@ -1,0 +1,127 @@
+library(ggplot2); library(gplots); library(RColorBrewer); 
+
+dataMatrix <- read.csv(file="Samples_1516Data_AsOf09162016.csv",stringsAsFactors = FALSE)
+
+just108 <- subset(dataMatrix, Subject == 108) #; subsetData <- subset(subsetData, Day == "7")
+just108hihi <- subset(just108, Cell == "ICOS+CD38+")   ## now subsetData has just 108, latest year, ICOS+CD38+
+just108hihi <- subset(just108hihi, SequenceStatus=="In")  # take in-frame sequences only
+just108lolo <- subset(just108, Cell == "ICOS-CD38-")   ## now subsetData has just 101, last year, ICOS+CD38+
+just108lolo <- subset(just108lolo, SequenceStatus=="In")  # take in-frame sequences only
+just108X5lo <- subset(just108, Cell == "CXCR5-")   ## now subsetData has just 101, last year, ICOS+CD38+
+just108X5lo <- subset(just108X5lo, SequenceStatus=="In")  # take in-frame sequences only
+
+
+##  ********************************* ICOS+CD38+ plots ************************************
+set.seed(50)
+subsetData <- subset(just108hihi,Day=="7")
+plotData <- data.frame(x=sample(1:nrow(subsetData)*3,nrow(subsetData),replace=F),y=sample(1:nrow(subsetData)*3,nrow(subsetData),replace=F))
+subsetData <- cbind(subsetData,plotData)
+S108d7 <- ggplot(data=subsetData,aes(x=subsetData$x,y=subsetData$y,size=subsetData$Frequency,fill=subsetData$Frequency)) + theme_bw() + 
+  theme(axis.text.x=element_blank(), axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(), axis.title.y=element_blank()) +
+  xlab("arbitrary X") + ylab("arbitrary Y")+ggtitle("ICOS+CD38+ cTfh, day 7, subject 108") +
+  geom_point(colour="black", pch=21) + theme(legend.key = element_blank(), plot.title=element_text(size=15)) + 
+  scale_fill_distiller(palette="Oranges",trans="reverse",limits=c(1.5,0),name="Clone Freq") +
+  scale_size_continuous(limits = c(0,2),range=c(0,10),guide=guide_legend(title="Clone Freq")) 
+S108d7
+ggsave(S108d7,filename="S108d7.eps", width=6,height=5)
+
+
+
+subsetData <- subset(just108hihi,Day=="0")
+plotData <- data.frame(x=sample(1:nrow(subsetData)*100,nrow(subsetData),replace=F),y=sample(1:nrow(subsetData)*100,nrow(subsetData),replace=F))
+subsetData <- cbind(subsetData,plotData)
+S108d0 <- ggplot(data=subsetData,aes(x=subsetData$x,y=subsetData$y,size=subsetData$Frequency,fill=subsetData$Frequency)) + theme_bw() +
+  theme(axis.text.x=element_blank(), axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(), axis.title.y=element_blank()) +
+  xlab("arbitrary X") + ylab("arbitrary Y")+ggtitle("ICOS+CD38+ cTfh, day 0, subject 108") +
+  geom_point(colour="black", pch=21) + theme(legend.key = element_blank(), plot.title=element_text(size=15)) + 
+  scale_fill_distiller(palette="Oranges",trans="reverse",limits=c(1.5,0),name="Clone Freq") +
+  scale_size_continuous(limits = c(0,2),range=c(0,10),guide=guide_legend(title="Clone Freq")) 
+S108d0
+ggsave(S108d0,filename="S108d0.eps", width=6,height=5)
+
+
+
+##  ********************************* ICOS-CD38- plots ************************************
+subsetData <- subset(just108lolo,Day=="7")
+plotData <- data.frame(x=sample(1:nrow(subsetData)*3,nrow(subsetData),replace=F),y=sample(1:nrow(subsetData)*3,nrow(subsetData),replace=F))
+subsetData <- cbind(subsetData,plotData)
+subsetData <- subsetData[order(subsetData$Frequency,decreasing=TRUE),]  
+subsetData$x2 <- subsetData$y2 <- 0; subsetData$x2[1:10] <- subsetData$x[1:10]; subsetData$y2[1:10] <- subsetData$y[1:10]
+S108d7lo <- ggplot(data=subsetData,aes(x=subsetData$x,y=subsetData$y,size=subsetData$Frequency,fill=subsetData$Frequency)) + theme_bw() + 
+  theme(axis.text.x=element_blank(), axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(), axis.title.y=element_blank()) +
+  xlab("arbitrary X") + ylab("arbitrary Y")+ggtitle("ICOS-CD38- cTfh, day 7, subject 108") +
+  geom_point(colour="black", pch=21) + theme(legend.key = element_blank(), plot.title=element_text(size=15)) + 
+  geom_point(aes(x=subsetData$x2,y=subsetData$y2,size=subsetData$Frequency,fill=subsetData$Frequency),
+             colour="black",pch=21) +
+  scale_fill_distiller(palette="Greens",trans="reverse",limits=c(1.5,0),name="Clone Freq") +
+  scale_size_continuous(limits = c(0,2),range=c(0,10),guide=guide_legend(title="Clone Freq")) 
+S108d7lo
+ggsave(S108d7lo,filename="S108d7_lo.eps", width=6,height=5)
+
+
+subsetData <- subset(just108lolo,Day=="0")
+plotData <- data.frame(x=sample(1:nrow(subsetData)*100,nrow(subsetData),replace=F),y=sample(1:nrow(subsetData)*100,nrow(subsetData),replace=F))
+subsetData <- cbind(subsetData,plotData)
+subsetData <- subsetData[order(subsetData$Frequency,decreasing=TRUE),]
+subsetData$x2 <- subsetData$y2 <- 0; subsetData$x2[1:10] <- subsetData$x[1:10]; subsetData$y2[1:10] <- subsetData$y[1:10]
+S108d0lo <- ggplot(data=subsetData,aes(x=subsetData$x,y=subsetData$y,size=subsetData$Frequency,fill=subsetData$Frequency)) + theme_bw() +
+  theme(axis.text.x=element_blank(), axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(), axis.title.y=element_blank()) +
+  xlab("arbitrary X") + ylab("arbitrary Y")+ggtitle("ICOS-CD38- cTfh, day 0, subject 108") +
+  geom_point(colour="black", pch=21) + theme(legend.key = element_blank(), plot.title=element_text(size=15)) + 
+  geom_point(aes(x=subsetData$x2,y=subsetData$y2,size=subsetData$Frequency,fill=subsetData$Frequency),
+             colour="black",pch=21) +
+  scale_fill_distiller(palette="Greens",trans="reverse",limits=c(1.5,0),name="Clone Freq") +
+  scale_size_continuous(limits = c(0,2),range=c(0,10),guide=guide_legend(title="Clone Freq")) 
+S108d0lo
+ggsave(S108d0lo,filename="S108d0_lo.eps", width=6,height=5)
+
+
+
+
+##  ********************************* CXCR5- plots ************************************
+
+subsetData <- subset(just108X5lo,Day=="7")
+plotData <- data.frame(x=sample(1:nrow(subsetData)*3,nrow(subsetData),replace=F),y=sample(1:nrow(subsetData)*3,nrow(subsetData),replace=F))
+subsetData <- cbind(subsetData,plotData)
+subsetData <- subsetData[order(subsetData$Frequency,decreasing=TRUE),]  
+subsetData$x2 <- subsetData$y2 <- 0; subsetData$x2[1:10] <- subsetData$x[1:10]; subsetData$y2[1:10] <- subsetData$y[1:10]
+S108d7X5lo <- ggplot(data=subsetData,aes(x=subsetData$x,y=subsetData$y,size=subsetData$Frequency,fill=subsetData$Frequency)) + theme_bw() + 
+  theme(axis.text.x=element_blank(), axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(), axis.title.y=element_blank()) +
+  xlab("arbitrary X") + ylab("arbitrary Y")+ggtitle("CXCR5- memory, day 7, subject 108") +
+  geom_point(colour="black", pch=21) + theme(legend.key = element_blank(), plot.title=element_text(size=15)) + 
+  geom_point(aes(x=subsetData$x2,y=subsetData$y2,size=subsetData$Frequency,fill=subsetData$Frequency),
+             colour="black",pch=21) +
+  scale_fill_distiller(palette="Blues",trans="reverse",limits=c(1.5,0),name="Clone Freq") +
+  scale_size_continuous(limits = c(0,2),range=c(0,10),guide=guide_legend(title="Clone Freq")) 
+S108d7X5lo
+ggsave(S108d7X5lo,filename="S108d7_X5lo.eps", width=6,height=5)
+
+
+subsetData <- subset(just108X5lo,Day=="0")
+plotData <- data.frame(x=sample(1:nrow(subsetData)*100,nrow(subsetData),replace=F),y=sample(1:nrow(subsetData)*100,nrow(subsetData),replace=F))
+subsetData <- cbind(subsetData,plotData)
+subsetData <- subsetData[order(subsetData$Frequency,decreasing=TRUE),]
+subsetData$x2 <- subsetData$y2 <- 0; subsetData$x2[1:10] <- subsetData$x[1:10]; subsetData$y2[1:10] <- subsetData$y[1:10]
+S108d0X5lo <- ggplot(data=subsetData,aes(x=subsetData$x,y=subsetData$y,size=subsetData$Frequency,fill=subsetData$Frequency)) + theme_bw() + 
+  theme(axis.text.x=element_blank(), axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(), axis.title.y=element_blank()) +
+  xlab("arbitrary X") + ylab("arbitrary Y")+ggtitle("CXCR5- memory, day 0, subject 108") +
+  geom_point(colour="black", pch=21) + theme(legend.key = element_blank(), plot.title=element_text(size=15)) + 
+  geom_point(aes(x=subsetData$x2,y=subsetData$y2,size=subsetData$Frequency,fill=subsetData$Frequency),
+             colour="black",pch=21) +
+  scale_fill_distiller(palette="Blues",trans="reverse",limits=c(1.5,0),name="Clone Freq") +
+  scale_size_continuous(limits = c(0,2),range=c(0,10),guide=guide_legend(title="Clone Freq")) 
+S108d0X5lo
+ggsave(S108d0X5lo,filename="S108d0_X5lo.eps", width=6,height=5)
+
+
+
+
+
+
+
