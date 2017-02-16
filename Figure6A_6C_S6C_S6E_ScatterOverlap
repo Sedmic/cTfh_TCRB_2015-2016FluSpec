@@ -1,0 +1,295 @@
+TCRdataMultYears <- read.csv("Samples_MultipleYearsData_AsOf09162016.csv")
+TCRdataMultYearsIn <- subset(TCRdataMultYears, SequenceStatus=="In", select=c(Subject, Year, Cell, Day, CDR3.AminoAcid, Frequency, Count))
+AIMs <- read.csv("AIMsUnique.csv")
+library(ggplot2)
+library(ggExtra)
+library(scales)
+
+#scatter plot of overlap for two inputs
+aa.pairwiseScatter <- function(x, y) {
+  if(any(duplicated(x$CDR3.AminoAcid))) {  #if there are any duplicated entries in the CDR3 sequences then ...
+    xduplicatedAAtf <- duplicated(x$CDR3.AminoAcid)     #condense rows in x with same amino acid sequence but different nucleotide sequences
+    xrowduplicated <- which(xduplicatedAAtf, xduplicatedAAtf=="TRUE")
+    xduplicatedAA <- x[xrowduplicated, "CDR3.AminoAcid"]
+    xdupall <- x[is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+    xaggdata <- aggregate(Frequency~CDR3.AminoAcid, data=xdupall, FUN=sum)    #add up frequencies for rows with same aa sequence
+    xaggdataorder <- xaggdata[order(xaggdata$Frequency), ]
+    xnotdup <- x[!is.element(x$CDR3.AminoAcid, xduplicatedAA), ]
+    xmerge <- rbind(xnotdup, xaggdata)
+    xmergeorder <- xmerge[order(xmerge$Frequency), ]    #list of unique aa sequences in x with frequencies
+  } else { xmergeorder <- x}
+  
+  if(any(duplicated(y$CDR3.AminoAcid))) {  #if there are any duplicated entries in the CDR3 sequences then ...
+    yduplicatedAAtf <- duplicated(y$CDR3.AminoAcid)   #condense rows in y with same aa sequence
+    yrowduplicated <- which(yduplicatedAAtf, yduplicatedAAtf=="TRUE")
+    yduplicatedAA <- y[yrowduplicated, "CDR3.AminoAcid"]
+    ydupall <- y[is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+    yaggdata <- aggregate(Frequency~CDR3.AminoAcid, data=ydupall, FUN=sum)    #add up frequencies for rows with same aa sequence
+    yaggdataorder <- yaggdata[order(yaggdata$Frequency), ]
+    ynotdup <- y[!is.element(y$CDR3.AminoAcid, yduplicatedAA), ]
+    ymerge <- rbind(ynotdup, yaggdata)
+    ymergeorder <- ymerge[order(ymerge$Frequency), ]    #list of unique aa sequences in y with frequencies
+  } else { ymergeorder <- y  }
+  
+  xyAA <- rbind(xmergeorder, ymergeorder)   #find overlapping sequences between x and y with frequencies for each
+  xyduplicatedAAtf <- duplicated(xyAA$CDR3.AminoAcid)
+  xyrowduplicated <- which(xyduplicatedAAtf, xyduplicatedAAtf=="TRUE")
+  xyduplicatedAA <- xyAA[xyrowduplicated, "CDR3.AminoAcid"]
+  yshared <- ymergeorder[is.element(ymergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+  ysharedorder <- yshared[order(yshared$CDR3.AminoAcid), ]
+  colnames(ysharedorder)[2] <- "Frequency.y"
+  xshared <- xmergeorder[is.element(xmergeorder$CDR3.AminoAcid, xyduplicatedAA), ]
+  xsharedorder <- xshared[order(xshared$CDR3.AminoAcid), ]
+  colnames(xsharedorder)[2] <- "Frequency.x"
+  xyshared <- merge(xshared, yshared, by=c("CDR3.AminoAcid"))
+  
+  ynotshared <- ymergeorder[!is.element(ymergeorder$CDR3.AminoAcid, xyduplicatedAA), ]    #find nonoverlapping sequences in y
+  ynotsharedorder <- ynotshared[order(ynotshared$CDR3.AminoAcid), ]
+  colnames(ynotsharedorder)[2] <- "Frequency.y"
+  ynotsharedorder$Frequency.x <- 0
+  ynotsharedorder <- ynotsharedorder[c(1,3,2)]
+  xnotshared <- xmergeorder[!is.element(xmergeorder$CDR3.AminoAcid, xyduplicatedAA), ]    #find nonoverlapping sequences in x
+  xnotsharedorder <- xnotshared[order(xnotshared$CDR3.AminoAcid), ]
+  colnames(xnotsharedorder)[2] <- "Frequency.x"
+  xnotsharedorder$Frequency.y <- 0
+  xynotshared <- rbind(xnotsharedorder, ynotsharedorder)
+  
+  xyallhi <- rbind(xyshared, xynotshared)
+  xyallhi$Cell <- "ICOS+CD38+ cTfh"
+  sharedhi <- nrow(xyshared)
+  totalhi <- nrow(xyallhi)
+  
+  return(xyallhi)
+}
+
+plotScatter <- function(xyallhi) {
+  ScatterPlot <- ggplot(data=xyallhi ) +
+    geom_point(aes(Frequency.x, Frequency.y, fill="darkorange2"), size=7, pch=21, color="black", alpha=0.6) +
+    scale_x_log10(limits=c(0.0001, 10), breaks=c(0.0001, 0.001, 0.010, 0.100, 1.00, 10.00), labels=comma) +
+    scale_y_log10(limits=c(0.0001, 10), breaks=c(0.0001, 0.001, 0.010, 0.100, 1.00, 10.00), labels=comma) +
+    theme_bw() +
+    scale_fill_manual(values=c("darkorange2")) +
+    theme(legend.position="none" )+#, axis.title=element_text(size=10, face="bold"), axis.text=element_text(size=30, face="bold", margin=unit(0.5, "cm")), plot.title=element_text(size=50, face="bold"), axis.ticks.length=unit(0.5, "cm")) +
+    #    ggtitle("Pairwise scatter") +
+    labs(x="Clonotypic frequency", y="Clonotypic frequency") +
+    annotate("text",x=5,y=5,size=10,colour="darkorange2",label=paste(nrow(temp[which(temp$Frequency.x>0 & temp$Frequency.y>0),])))
+  ScatterPlot
+  ggExtra::ggMarginal(ScatterPlot,type="density",size=10,color="black",fill="darkorange2")
+}
+
+#tetramer overlaps
+s108_HA306_180 <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Day==180 & Cell=="HA306+", select=c(CDR3.AminoAcid, Frequency))
+s108_HA398_180 <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Day==180 & Cell=="HA40+", select=c(CDR3.AminoAcid, Frequency))
+s999_HA306_180 <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==180 & Cell=="HA306+", select=c(CDR3.AminoAcid, Frequency))
+s999_HA398_180 <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==180 & Cell=="HA40+", select=c(CDR3.AminoAcid, Frequency))
+
+
+s108_Y1D0_hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+s108_Y1D7_hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+s108_Y2D0_hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+s108_Y2D7_hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+s108_Y1D0_lo <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Day==0 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+s108_Y1D7_lo <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+s108_Y2D0_lo <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Day==0 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+s108_Y2D7_lo <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+
+s999_Y1D7_hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1314 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+s999_Y2D0_hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+s999_Y2D7_hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+s999_Y3D0_hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+s999_Y3D7_hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+s999_Y1D7_lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1314 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+s999_Y2D0_lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==0 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+s999_Y2D7_lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+s999_Y3D0_lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==0 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+s999_Y3D7_lo <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==7 & Cell=="ICOS-CD38-", select=c(CDR3.AminoAcid, Frequency))
+
+
+# subject 999 for HA306
+temp<-aa.pairwiseScatter(s999_Y1D7_hi, s999_HA306_180)
+plotScatter(temp)  # file=../R Images/TetramerScatter/s999_Y1D7_hi_vs_HA306    
+#use of marginals means I cannot use ggsave so I save all images manually as pdf as portrait 4.5 x 4 in 
+
+temp<-aa.pairwiseScatter(s999_Y2D0_hi, s999_HA306_180)
+plotScatter(temp) #file= s999_Y2D0_hi_vs_HA306
+
+temp<-aa.pairwiseScatter(s999_Y2D7_hi, s999_HA306_180)
+plotScatter(temp) #file= s999_Y2D7_hi_vs_HA306
+
+temp<-aa.pairwiseScatter(s999_Y3D0_hi, s999_HA306_180)
+plotScatter(temp) #file= s999_Y3D0_hi_vs_HA306
+
+temp<-aa.pairwiseScatter(s999_Y3D7_hi, s999_HA306_180)
+plotScatter(temp) #file= s999_Y3D7_hi_vs_HA306
+
+
+# subject 999 for HA398
+temp<-aa.pairwiseScatter(s999_Y1D7_hi, s999_HA398_180)
+plotScatter(temp) #file= s999_Y1D7_hi_vs_HA398
+
+temp<-aa.pairwiseScatter(s999_Y2D0_hi, s999_HA398_180)
+plotScatter(temp) #file= s999_Y2D0_hi_vs_HA398
+
+temp<-aa.pairwiseScatter(s999_Y2D7_hi, s999_HA398_180)
+plotScatter(temp) #file= s999_Y2D7_hi_vs_HA398
+
+temp<-aa.pairwiseScatter(s999_Y3D0_hi, s999_HA398_180)
+plotScatter(temp) #file= s999_Y3D0_hi_vs_HA398
+
+temp<-aa.pairwiseScatter(s999_Y3D7_hi, s999_HA40_180)
+plotScatter(temp) #file= s999_Y3D7_hi_vs_HA398
+
+
+# subject 108 for HA306
+temp<-aa.pairwiseScatter(s108_Y1D0_hi, s108_HA306_180)
+plotScatter(temp) #file= s108_Y1D0_hi_vs_HA306
+
+temp<-aa.pairwiseScatter(s108_Y1D7_hi, s108_HA306_180)
+plotScatter(temp) #file= s108_Y1D7_hi_vs_HA306
+
+temp<-aa.pairwiseScatter(s108_Y2D0_hi, s108_HA306_180)
+plotScatter(temp) #file= s108_Y2D0_hi_vs_HA306
+
+temp<-aa.pairwiseScatter(s108_Y2D7_hi, s108_HA306_180)
+plotScatter(temp) #file= s108_Y2D7_hi_vs_HA306
+
+
+
+# subject 108 for HA398
+temp<-aa.pairwiseScatter(s108_Y1D0_hi, s108_HA398_180)
+plotScatter(temp) #file= s108_Y1D0_hi_vs_HA398
+
+temp<-aa.pairwiseScatter(s108_Y1D7_hi, s108_HA398_180)
+plotScatter(temp) #file= s108_Y1D7_hi_vs_HA398
+
+temp<-aa.pairwiseScatter(s108_Y2D0_hi, s108_HA398_180)
+plotScatter(temp) #file= s108_Y2D0_hi_vs_HA398
+
+temp<-aa.pairwiseScatter(s108_Y2D7_hi, s108_HA398_180)
+plotScatter(temp) #file= s108_Y2D7_hi_vs_HA398
+
+
+#subject 101 for AIMs
+temp <- aa.pairwiseScatter(a1hi, a5aim)
+plotScatter(temp) #file= s101_Y1D7_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(a2hi, a5aim)
+plotScatter(temp) #file= s101_Y2D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(a3hi, a5aim)
+plotScatter(temp) #file= s101_Y2D7_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(a4hi, a5aim)
+plotScatter(temp) #file= s101_Y3D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(a5hi, a5aim)
+plotScatter(temp) #file= s101_Y3D7_hi_vs_AIMs
+
+
+#subject 999 for AIMs
+temp <- aa.pairwiseScatter(b1hi, b5aim)
+plotScatter(temp) #file= s999_Y1D7_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(b2hi, b5aim)
+plotScatter(temp) #file= s999_Y2D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(b3hi, b5aim)
+plotScatter(temp) #file= s999_Y2D7_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(b4hi, b5aim)
+plotScatter(temp) #file= s999_Y3D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(b5hi, b5aim)
+plotScatter(temp) #file= s999_Y3D7_hi_vs_AIMs
+
+
+#subject 108 for AIMs
+temp <- aa.pairwiseScatter(c2hi, c5aim)
+plotScatter(temp) #file= s108_Y2D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(c3hi, c5aim)
+plotScatter(temp) #file= s108_Y2D7_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(c4hi, c5aim)
+plotScatter(temp) #file= s108_Y3D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(c5hi, c5aim)
+plotScatter(temp) #file= s108_Y3D7_hi_vs_AIMs
+
+
+#subject 106 for AIMs
+temp <- aa.pairwiseScatter(d2hi, d5aim)
+plotScatter(temp) #file= s106_Y2D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(d3hi, d5aim)
+plotScatter(temp) #file= s106_Y2D7_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(d4hi, d5aim)
+plotScatter(temp) #file= s106_Y3D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(d5hi, d5aim)
+plotScatter(temp) #file= s106_Y3D7_hi_vs_AIMs
+
+
+#subject 117 for AIMs
+temp <- aa.pairwiseScatter(e2hi, e5aim)
+plotScatter(temp) #file= s117_Y2D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(e3hi, e5aim)
+plotScatter(temp) #file= s117_Y2D7_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(e4hi, e5aim)
+plotScatter(temp) #file= s117_Y3D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(e5hi, e5aim)
+plotScatter(temp) #file= s117_Y3D7_hi_vs_AIMs
+
+
+#subject 100 for AIMs
+temp <- aa.pairwiseScatter(l3hi, l5aim)
+plotScatter(temp) #file= s100_Y2D7_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(l4hi, l5aim)
+plotScatter(temp) #file= s100_Y3D0_hi_vs_AIMs
+
+temp <- aa.pairwiseScatter(l5hi, l5aim)
+plotScatter(temp) #file= s100_Y3D7_hi_vs_AIMs
+
+
+
+a1hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1314 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+a2hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency))
+a3hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+a4hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency))
+a5hi <- subset(TCRdataMultYearsIn, Subject==101 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+a5aim <- subset(AIMs, Subject==101, select=c(CDR3.AminoAcid, Frequency))
+
+b1hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1314 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b2hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b3hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1415 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b4hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==0 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b5hi <- subset(TCRdataMultYearsIn, Subject==999 & Year==1516 & Day==7 & Cell=="ICOS+CD38+", select=c(CDR3.AminoAcid, Frequency))
+b5aim <- subset(AIMs, Subject==999, select=c(CDR3.AminoAcid, Frequency))
+
+c2hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency))
+c3hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+c4hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency))
+c5hi <- subset(TCRdataMultYearsIn, Subject==108 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+c5aim <- subset(AIMs, Subject==108, select=c(CDR3.AminoAcid, Frequency))
+
+d2hi <- subset(TCRdataMultYearsIn, Subject==106 & Year==1415 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency))
+d3hi <- subset(TCRdataMultYearsIn, Subject==106 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+d4hi <- subset(TCRdataMultYearsIn, Subject==106 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency))
+d5hi <- subset(TCRdataMultYearsIn, Subject==106 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+d5aim <- subset(AIMs, Subject==106, select=c(CDR3.AminoAcid, Frequency))
+
+e2hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1415 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency))
+e3hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+e4hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency))
+e5hi <- subset(TCRdataMultYearsIn, Subject==117 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+e5aim <- subset(AIMs, Subject==117, select=c(CDR3.AminoAcid, Frequency))
+
+l3hi <- subset(TCRdataMultYearsIn, Subject==100 & Year==1415 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+l4hi <- subset(TCRdataMultYearsIn, Subject==100 & Year==1516 & Cell=="ICOS+CD38+" & Day==0, select=c(CDR3.AminoAcid, Frequency))
+l5hi <- subset(TCRdataMultYearsIn, Subject==100 & Year==1516 & Cell=="ICOS+CD38+" & Day==7, select=c(CDR3.AminoAcid, Frequency))
+l5aim <- subset(AIMs, Subject==100, select=c(CDR3.AminoAcid, Frequency))
